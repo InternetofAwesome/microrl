@@ -542,8 +542,16 @@ static void microrl_get_complite(microrl_t* pThis) {
 		}
 	}
 	pThis->print("\33[2K\r");
+
+	len = common_len(pThis);
+
 	while (i--) {
 		if (pThis->entries[i].autocompl_match) {
+			if(len)
+			{
+				microrl_insert_text(pThis, pThis->entries[i].name+pThis->cursor, len-pThis->cursor);
+				len=0;
+			}
 			pThis->print(pThis->entries[i].name);
 			pThis->print(" ");
 		}
@@ -551,39 +559,21 @@ static void microrl_get_complite(microrl_t* pThis) {
 	terminal_newline(pThis);
 	print_prompt(pThis);
 	terminal_print_line(pThis, 0, pThis->cursor);
-//	terminal_newline(pThis);
-//	print_prompt(pThis);
-//	if (compl_token[1] == NULL) {
-//		len = strlen(compl_token[0]);
-//	} else {
-//		len = common_len(pThis);
-//		terminal_newline(pThis);
-//		while (compl_token[i] != NULL) {
-//			pThis->print(compl_token[i]);
-//			pThis->print(" ");
-//			i++;
-//		}
-//		terminal_newline(pThis);
-//		print_prompt(pThis);
-//	}
-//	if (len) {
-//		microrl_insert_text(pThis, compl_token[0] + strlen(tkn_arr[tokens - 1]),
-//				len - strlen(tkn_arr[tokens - 1]));
-//		if (compl_token[1] == NULL)
-//			microrl_insert_text(pThis, " ", 1);
-//	}
-//	terminal_reset_cursor(pThis);
-//	terminal_print_line(pThis, 0, pThis->cursor);
 }
 #endif
 
 void print_help(microrl_t *microrl)
 {
 	int i=microrl->num_entries;
+	microrl->print("\033[001mCommand Table:");
+	terminal_newline(microrl);
+	microrl->print("  Command             Description\033[000m");
+	terminal_newline(microrl);
 	while(i--)
 	{
-		snprintf(microrl->cmdline, sizeof(microrl->cmdline), "%-10s%s", microrl->entries->name, microrl->entries->help_text);
+		snprintf(microrl->cmdline, sizeof(microrl->cmdline), "  %-20s%s", microrl->entries[i].name, microrl->entries[i].help_text);
 		microrl->print(microrl->cmdline);
+		terminal_newline(microrl);
 	}
 	memset(microrl->cmdline, 0, sizeof(microrl->cmdline));
 }

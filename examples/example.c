@@ -7,6 +7,7 @@
 microrl_t rl;
 microrl_t * prl = &rl;
 microrl_entry_t entries[] = {{"list", "print a list", NULL},
+		{"lister", "print a list", NULL},
 		{"otherstuff", "Do something", NULL}};
 
 
