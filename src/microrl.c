@@ -507,8 +507,8 @@ int get_completion(microrl_t *microrl, int argc, const char * const * argv )
 		while(i--)
 		{
 			microrl->entries[i].autocompl_match = 1;
-			return microrl->num_entries;
 		}
+		return microrl->num_entries;
 	}
 	return j;
 }
@@ -541,12 +541,16 @@ static void microrl_get_complite(microrl_t* pThis) {
 			}
 		}
 	}
+	pThis->print("\33[2K\r");
 	while (i--) {
 		if (pThis->entries[i].autocompl_match) {
 			pThis->print(pThis->entries[i].name);
 			pThis->print(" ");
 		}
 	}
+	terminal_newline(pThis);
+	print_prompt(pThis);
+	terminal_print_line(pThis, 0, pThis->cursor);
 //	terminal_newline(pThis);
 //	print_prompt(pThis);
 //	if (compl_token[1] == NULL) {
@@ -573,7 +577,7 @@ static void microrl_get_complite(microrl_t* pThis) {
 }
 #endif
 
-print_help(microrl_t *microrl)
+void print_help(microrl_t *microrl)
 {
 	int i=microrl->num_entries;
 	while(i--)
@@ -581,7 +585,7 @@ print_help(microrl_t *microrl)
 		snprintf(microrl->cmdline, sizeof(microrl->cmdline), "%-10s%s", microrl->entries->name, microrl->entries->help_text);
 		microrl->print(microrl->cmdline);
 	}
-	memset(microrl->cmdline, 0, sizeof(microrl.cmdline));
+	memset(microrl->cmdline, 0, sizeof(microrl->cmdline));
 }
 
 int execute(microrl_t *microrl, int argc, const char * const * argv )

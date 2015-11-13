@@ -65,19 +65,6 @@ int val;
 
 
 //*****************************************************************************
-void print_help ()
-{
-	print ("Use TAB key for completion\n\rCommand:\n\r");
-	print ("\tversion {microrl | demo} - print version of microrl lib or version of this demo src\n\r");
-	print ("\thelp  - this message\n\r");
-	print ("\tclear - clear screen\n\r");
-	print ("\tlist  - list all commands in tree\n\r");
-	print ("\tname [string] - print 'name' value if no 'string', set name value to 'string' if 'string' present\n\r");
-	print ("\tlisp - dummy command for demonstation auto-completion, while inputed 'l+<TAB>'\n\r");
-}
-
-
-//*****************************************************************************
 void sigint (void)
 {
 	print ("^C catched!\n\r");
