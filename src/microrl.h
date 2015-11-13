@@ -2,6 +2,7 @@
 #define _MICRORL_H_
 
 #include "config.h"
+#include <stdbool.h>
 
 #define true  1
 #define false 0
@@ -63,8 +64,18 @@ typedef struct {
 } ring_history_t;
 #endif
 
+typedef struct
+{
+	char *name;
+	char *help_text;
+	int (*callback)(int argc, const char * const * argv);
+#ifdef _USE_COMPLETE
+	bool autocompl_match	:1;
+#endif
+} microrl_entry_t;
+
 // microrl struct, contain internal library data
-typedef struct {
+typedef struct microrl_s {
 #ifdef _USE_ESC_SEQ
 	char escape_seq;
 	char escape;
@@ -79,9 +90,9 @@ typedef struct {
 	char cmdline [_COMMAND_LINE_LEN];  // cmdline buffer
 	int cmdlen;                        // last position in command line
 	int cursor;                        // input cursor
-	int (*execute) (int argc, const char * const * argv );            // ptr to 'execute' callback
-	char ** (*get_completion) (int argc, const char * const * argv ); // ptr to 'completion' callback
 	void (*print) (const char *);                                     // ptr to 'print' callback
+	microrl_entry_t *entries;
+	size_t num_entries;
 #ifdef _USE_CTLR_C
 	void (*sigint) (void);
 #endif
@@ -94,17 +105,8 @@ void microrl_init (microrl_t * pThis, void (*print)(const char*));
 // echo mode will enabled after user press Enter.
 void microrl_set_echo (int);
 
-// set pointer to callback complition func, that called when user press 'Tab'
-// callback func description:
-//   param: argc - argument count, argv - pointer array to token string
-//   must return NULL-terminated string, contain complite variant splitted by 'Whitespace'
-//   If complite token found, it's must contain only one token to be complitted
-//   Empty string if complite not found, and multiple string if there are some token
-void microrl_set_complete_callback (microrl_t * pThis, char ** (*get_completion)(int, const char* const*));
-
-// pointer to callback func, that called when user press 'Enter'
-// execute func param: argc - argument count, argv - pointer array to token string
-void microrl_set_execute_callback (microrl_t * pThis, int (*execute)(int, const char* const*));
+int get_completion(microrl_t *microrl, int argc, const char * const * argv ); //'completion' callback
+int execute(microrl_t *microrl, int argc, const char * const * argv );            //'execute' callback
 
 // set callback for Ctrl+C terminal signal
 #ifdef _USE_CTLR_C

@@ -177,16 +177,9 @@ static int hist_restore_line (ring_history_t * pThis, char * line, int dir)
 }
 #endif
 
-
-
-
-
-
-
-
 //*****************************************************************************
 // split cmdline to tkn array and return nmb of token
-static int split (microrl_t * pThis, int limit, char const ** tkn_arr)
+int split (microrl_t * pThis, int limit, char const ** tkn_arr)
 {
 	int i = 0;
 	int ind = 0;
@@ -327,8 +320,6 @@ void microrl_init (microrl_t * pThis, void (*print) (const char *))
 #endif
 	pThis->cmdlen =0;
 	pThis->cursor = 0;
-	pThis->execute = NULL;
-	pThis->get_completion = NULL;
 #ifdef _USE_CTLR_C
 	pThis->sigint = NULL;
 #endif
@@ -339,17 +330,6 @@ void microrl_init (microrl_t * pThis, void (*print) (const char *))
 #endif
 }
 
-//*****************************************************************************
-void microrl_set_complete_callback (microrl_t * pThis, char ** (*get_completion)(int, const char* const*))
-{
-	pThis->get_completion = get_completion;
-}
-
-//*****************************************************************************
-void microrl_set_execute_callback (microrl_t * pThis, int (*execute)(int, const char* const*))
-{
-	pThis->execute = execute;
-}
 #ifdef _USE_CTLR_C
 //*****************************************************************************
 void microrl_set_sigint_callback (microrl_t * pThis, void (*sigintf)(void))
@@ -465,69 +445,176 @@ static void microrl_backspace (microrl_t * pThis)
 #ifdef _USE_COMPLETE
 
 //*****************************************************************************
-static int common_len (char ** arr)
+static int common_len (microrl_t * microrl)
 {
-	int i;
+	int i=microrl->num_entries;
 	int j;
-	char *shortest = arr[0];
-	int shortlen = strlen(shortest);
+	char *shortest;
+	int comm_len;
 
-	for (i = 0; arr[i] != NULL; ++i)
-		if (strlen(arr[i]) < shortlen) {
-			shortest = arr[i];
-			shortlen = strlen(shortest);
+	//decrement i until we find the first match.
+	while(i--)
+		if(microrl->entries[i].autocompl_match)
+		{
+			comm_len = strlen(microrl->entries[i].name);
+			shortest = microrl->entries[i].name;
+			break;
 		}
 
-	for (i = 0; i < shortlen; ++i)
-		for (j = 0; arr[j] != 0; ++j)
-			if (shortest[i] != arr[j][i])
-				return i;
-
-	return i;
+	while(i--)
+	{
+		if(microrl->entries[i].autocompl_match)
+		{
+			for(j=0; j<comm_len; j++)
+			{
+				if(microrl->entries[i].name[j] != shortest[j])
+				{
+					if(!j)
+						return j;
+					comm_len = j;
+					break;
+				}
+			}
+		}
+	}
+	return comm_len;
 }
 
 //*****************************************************************************
-static void microrl_get_complite (microrl_t * pThis) 
+// completion callback for microrl library
+int get_completion(microrl_t *microrl, int argc, const char * const * argv )
 {
-	char const * tkn_arr[_COMMAND_TOKEN_NMB];
-	char ** compl_token; 
-	
-	if (pThis->get_completion == NULL) // callback was not set
-		return;
-	
-	int status = split (pThis, pThis->cursor, tkn_arr);
-	if (pThis->cmdline[pThis->cursor-1] == '\0')
-		tkn_arr[status++] = "";
-	compl_token = pThis->get_completion (status, tkn_arr);
-	if (compl_token[0] != NULL) {
-		int i = 0;
-		int len;
+	int j = 0, i=microrl->num_entries;
 
-		if (compl_token[1] == NULL) {
-			len = strlen (compl_token[0]);
-		} else {
-			len = common_len (compl_token);
-			terminal_newline (pThis);
-			while (compl_token [i] != NULL) {
-				pThis->print (compl_token[i]);
-				pThis->print (" ");
-				i++;
+	// if there is token in cmdline
+	if (argc > 0) {
+		// get last entered token
+		char * bit = (char*)argv [argc-1];
+		// iterate through our available token and match it
+		while(i--)
+			// if token is matched (text is part of our token starting from 0 char)
+			if (strstr(microrl->entries[i].name, bit) == microrl->entries[i].name)
+			{
+				// add it to completion set
+				microrl->entries[i].autocompl_match = 1;
+				j++;
 			}
-			terminal_newline (pThis);
-			print_prompt (pThis);
+			else
+				microrl->entries[i].autocompl_match = 0;
 		}
-		
-		if (len) {
-			microrl_insert_text (pThis, compl_token[0] + strlen(tkn_arr[status-1]), 
-																	len - strlen(tkn_arr[status-1]));
-			if (compl_token[1] == NULL) 
-				microrl_insert_text (pThis, " ", 1);
+	else
+	{ // if there is no token in cmdline, just print all available token
+		while(i--)
+		{
+			microrl->entries[i].autocompl_match = 1;
+			return microrl->num_entries;
 		}
-		terminal_reset_cursor (pThis);
-		terminal_print_line (pThis, 0, pThis->cursor);
-	} 
+	}
+	return j;
+}
+
+//*****************************************************************************
+static void microrl_get_complite(microrl_t* pThis) {
+//	char** compl_token;
+	int i = pThis->num_entries;
+	int len;
+	char * tkn_arr[_COMMAND_TOKEN_NMB];
+	int tokens = split(pThis, pThis->cursor, (char const ** )tkn_arr);
+//	if (pThis->cmdline[pThis->cursor - 1] == '\0')
+//		tkn_arr[tokens++] = "";
+
+	len = get_completion(pThis, tokens, (const char * const *)tkn_arr);
+	if (!len)
+		return;
+
+	if (len == 1) {
+		while (i--) {
+			if (pThis->entries[i].autocompl_match) {
+				int pos = pThis->cursor;
+				microrl_insert_text(pThis,
+						pThis->entries[i].name + pThis->cursor,
+						strlen(pThis->entries[i].name)-pThis->cursor);
+//				terminal_reset_cursor(pThis);
+				terminal_move_cursor(pThis, 0);
+				terminal_print_line(pThis, pos, pThis->cursor);
+				return;
+			}
+		}
+	}
+	while (i--) {
+		if (pThis->entries[i].autocompl_match) {
+			pThis->print(pThis->entries[i].name);
+			pThis->print(" ");
+		}
+	}
+//	terminal_newline(pThis);
+//	print_prompt(pThis);
+//	if (compl_token[1] == NULL) {
+//		len = strlen(compl_token[0]);
+//	} else {
+//		len = common_len(pThis);
+//		terminal_newline(pThis);
+//		while (compl_token[i] != NULL) {
+//			pThis->print(compl_token[i]);
+//			pThis->print(" ");
+//			i++;
+//		}
+//		terminal_newline(pThis);
+//		print_prompt(pThis);
+//	}
+//	if (len) {
+//		microrl_insert_text(pThis, compl_token[0] + strlen(tkn_arr[tokens - 1]),
+//				len - strlen(tkn_arr[tokens - 1]));
+//		if (compl_token[1] == NULL)
+//			microrl_insert_text(pThis, " ", 1);
+//	}
+//	terminal_reset_cursor(pThis);
+//	terminal_print_line(pThis, 0, pThis->cursor);
 }
 #endif
+
+print_help(microrl_t *microrl)
+{
+	int i=microrl->num_entries;
+	while(i--)
+	{
+		snprintf(microrl->cmdline, sizeof(microrl->cmdline), "%-10s%s", microrl->entries->name, microrl->entries->help_text);
+		microrl->print(microrl->cmdline);
+	}
+	memset(microrl->cmdline, 0, sizeof(microrl.cmdline));
+}
+
+int execute(microrl_t *microrl, int argc, const char * const * argv )
+{
+	int i=microrl->num_entries;
+	while(i--)
+	{
+		if(!strcmp(microrl->entries[i].name, argv[0]))
+		{
+			if(microrl->entries[i].callback)
+			{
+				if(microrl->entries[i].callback(argc, argv))
+				{
+					microrl->print("error");
+					terminal_newline(microrl);
+					return 1;
+				}
+				return 0;
+			}
+			microrl->print("null func");
+			terminal_newline(microrl);
+			return 1;
+		}
+	}
+	if(!strcmp("help", argv[0]))
+	{
+		print_help(microrl);
+		return 0;
+	}
+	microrl->print("invalid command");
+	terminal_newline(microrl);
+	return 1;
+}
 
 //*****************************************************************************
 void new_line_handler(microrl_t * pThis){
@@ -545,8 +632,8 @@ void new_line_handler(microrl_t * pThis){
 		pThis->print ("ERROR:too many tokens");
 		pThis->print (ENDL);
 	}
-	if ((status > 0) && (pThis->execute != NULL))
-		pThis->execute (status, tkn_arr);
+	if ((status > 0))
+		execute (pThis, status, tkn_arr);
 	print_prompt (pThis);
 	pThis->cmdlen = 0;
 	pThis->cursor = 0;

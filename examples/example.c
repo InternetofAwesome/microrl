@@ -6,20 +6,18 @@
 // create microrl object and pointer on it
 microrl_t rl;
 microrl_t * prl = &rl;
+microrl_entry_t entries[] = {{"list", "print a list", NULL},
+		{"otherstuff", "Do something", NULL}};
+
 
 //*****************************************************************************
 int main (void/*int argc, char ** argv*/)
 {
 	init ();
 	// call init with ptr to microrl instance and print callback
+	prl->entries = entries;
+	prl->num_entries = sizeof(entries)/sizeof(entries[0]);
 	microrl_init (prl, print);
-	// set callback for execute
-	microrl_set_execute_callback (prl, execute);
-
-#ifdef _USE_COMPLETE
-	// set callback for completion
-	microrl_set_complete_callback (prl, complet);
-#endif
 	// set callback for Ctrl+C
 	microrl_set_sigint_callback (prl, sigint);
 	while (1) {

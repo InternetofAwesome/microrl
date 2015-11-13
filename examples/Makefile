@@ -1,4 +1,4 @@
-#DEBUG     = -g
+DEBUG     = -g -O0
 
 CC        = gcc
 CPPFLAGS  = $(DEBUG) 
