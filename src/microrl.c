@@ -537,6 +537,7 @@ static void microrl_get_complite(microrl_t* pThis) {
 //				terminal_reset_cursor(pThis);
 				terminal_move_cursor(pThis, 0);
 				terminal_print_line(pThis, pos, pThis->cursor);
+				microrl_insert_char(pThis, ' ');
 				return;
 			}
 		}
