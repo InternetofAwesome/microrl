@@ -70,7 +70,7 @@ typedef struct
 	char *help_text;
 	int (*callback)(int argc, const char * const * argv);
 #ifdef _USE_COMPLETE
-	bool autocompl_match	:1;
+	int autocompl_match;
 #endif
 } microrl_entry_t;
 
