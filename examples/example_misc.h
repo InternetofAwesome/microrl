@@ -18,4 +18,6 @@ char get_char (void);
 // ctrl+c callback
 void sigint (void);
 
+int example(int argc, const char* const * argv);
+
 #endif
